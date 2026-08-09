@@ -7,8 +7,8 @@ const int RELAY_PIN = 6;
 const int LIGHT_SENSOR_PIN = A0; 
 
 // ---- Settings ----
-int darkThreshold = 50;  
-const unsigned long LoopDelay = 60UL *1000UL; // 1m
+int darkThreshold = 5;  
+const unsigned long LoopDelay = 1000UL; // 1s
 
 const unsigned long ON_DURATION = 2UL * 60UL * 60UL * 1000UL; 
 const unsigned long MAX_COOLDOWN = 12UL * 60UL * 60UL * 1000UL;  
