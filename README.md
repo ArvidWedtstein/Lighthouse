@@ -16,7 +16,7 @@
 <br />
 <div align="center">
   <a href="https://github.com/ArvidWedtstein/Lighthouse">
-    <img src="" alt="Lighthouse" width="80" height="160">
+    <img width="140" height="256" alt="Lighthouse" src="https://github.com/user-attachments/assets/1b690146-a83d-4ef8-9bc1-7e6615903704" />
   </a>
 
   <h3 align="center">Lighthouse</h3>
