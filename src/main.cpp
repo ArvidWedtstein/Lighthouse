@@ -1,4 +1,6 @@
 #include <Arduino.h>
+#include <avr/sleep.h> 
+#include <avr/wdt.h> 
 
 bool serialActive = false;
 
@@ -7,11 +9,12 @@ const int RELAY_PIN = 6;
 const int LIGHT_SENSOR_PIN = A0; 
 
 // ---- Settings ----
-int darkThreshold = 5;  
+const int DARK_THRESHOLD = 5;  
+const int LIGHT_THRESHOLD = 25;
 const unsigned long LoopDelay = 1000UL; // 1s
 
-const unsigned long ON_DURATION = 2UL * 60UL * 60UL * 1000UL; 
-const unsigned long MAX_COOLDOWN = 12UL * 60UL * 60UL * 1000UL;  
+const unsigned long ON_DURATION_CYCLES   = (2UL * 60UL * 60UL) / 8UL;   
+const unsigned long MAX_COOLDOWN_CYCLES = (12UL * 60UL * 60UL) / 8UL; 
 
 // ---- Relay logic level ----
 const int RELAY_ON = LOW;
@@ -25,64 +28,90 @@ enum State {
 };
 
 State currentState = IDLE;
-unsigned long relayStartTime = 0;
-unsigned long cooldownStartTime = 0;
+unsigned long cycleCounter = 0; 
+bool isDark = false;
 
+ISR(WDT_vect) {
+  // Used as physical wakeup alarm clock
+}
+
+void setupWatchdog() {
+  MCUSR &= ~(1 << WDRF); // Clear reset flag
+  WDTCSR |= (1 << WDCE) | (1 << WDE); // Enable watchdog configuration mode
+  WDTCSR = (1 << WDP3) | (1 << WDP0); // Set timeout window to 8.0 seconds
+  WDTCSR |= (1 << WDIE); // Enable watchdog interrupt mode
+}
+
+
+void enterDeepSleep() {
+  ADCSRA &= ~(1 << ADEN); // Turn off the Analog to Digital Converter (Saves battery)
+  set_sleep_mode(SLEEP_MODE_PWR_DOWN); // Choose maximum deep sleep profile
+  sleep_enable();
+  
+  sleep_cpu(); // Microcontroller turns completely off here...
+  
+  // ...The code resumes right here exactly 8 seconds later when the watchdog barks
+  sleep_disable(); 
+  ADCSRA |= (1 << ADEN); // Turn the Analog to Digital Converter back on for sensor tracking
+}
 
 void setup() {
-  Serial.begin(9600);
-
-  pinMode(LIGHT_SENSOR_PIN, INPUT);
   pinMode(RELAY_PIN, OUTPUT);
-
   digitalWrite(RELAY_PIN, RELAY_OFF);
 
-  Serial.println("Press [ENTER] or send any character to begin debugging...");
+  setupWatchdog();
 }
 
 void loop() {
-  if (Serial.available() > 0) {
-    serialActive = true; 
-    while(Serial.available() > 0) { Serial.read(); } // Clear the buffer
+  int lightLevel = analogRead(LIGHT_SENSOR_PIN);
+
+  if (lightLevel <= DARK_THRESHOLD) {
+    isDark = true;
+  } 
+  else if (lightLevel >= LIGHT_THRESHOLD) {
+    isDark = false;
   }
 
-  int lightLevel = analogRead(LIGHT_SENSOR_PIN);
-  bool isDark = (lightLevel < darkThreshold);
-
-  if (serialActive) {
-    Serial.print("Light: ");
-    Serial.print(lightLevel);
-    Serial.print(" | State: ");
-    Serial.println(currentState);
+  Serial.print("Light: ");
+  Serial.print(lightLevel);
+  Serial.print(" | Filtered Status: ");
+  Serial.print(isDark ? "DARK" : "LIGHT");
+  Serial.print(" | State: ");
+  switch (currentState) {
+    case IDLE:     Serial.println("IDLE"); break;
+    case RUNNING:  Serial.println("RUNNING"); break;
+    case COOLDOWN: Serial.println("COOLDOWN"); break;
   }
 
   switch (currentState) {
     case IDLE:
       if (isDark) {
         currentState = RUNNING;
-        relayStartTime = millis();
+        cycleCounter = 0;
         digitalWrite(RELAY_PIN, RELAY_ON);
         Serial.println("Dark detected -> Relay ON");
       }
       break;
+
     case RUNNING:
-      if (millis() - relayStartTime >= ON_DURATION) {
+      cycleCounter++;
+      if (cycleCounter >= ON_DURATION_CYCLES) {
         digitalWrite(RELAY_PIN, RELAY_OFF);
         currentState = COOLDOWN;
-        cooldownStartTime = millis();
+        cycleCounter = 0;
         Serial.println("time elapsed -> Relay OFF, waiting for light");
       }
       break;
+
     case COOLDOWN:
-      if (!isDark) {
+      cycleCounter++;
+      if (!isDark || cycleCounter >= MAX_COOLDOWN_CYCLES) {
         currentState = IDLE;
-        Serial.println("Light detected -> Re-armed, watching for darkness");
-      } else if (millis() - cooldownStartTime >= MAX_COOLDOWN) {
-        currentState = IDLE;
-        Serial.println("Cooldown timeout reached -> Force re-armed (safety fallback)");
+        cycleCounter = 0;
+        Serial.println("Re-armed");
       }
       break;
   }
 
-  delay(LoopDelay);
+  enterDeepSleep();
 }
