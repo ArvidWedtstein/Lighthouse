@@ -10,7 +10,6 @@ const int LED_PIN = LED_BUILTIN;
 // ---- Settings ----
 const int DARK_THRESHOLD = 200;  
 const int LIGHT_THRESHOLD = 500;
-const unsigned long LoopDelay = 1000UL; // 1s
 
 const unsigned long ON_DURATION_CYCLES   = (2UL * 60UL * 60UL) / 8UL;   
 const unsigned long MAX_COOLDOWN_CYCLES = (12UL * 60UL * 60UL) / 8UL; 
@@ -138,7 +137,7 @@ void loop() {
       break;
   }
 
-  if (isDark) {
+  if (isDark && currentState == IDLE) {
     ledState = HIGH;
   } else {
     ledState = LOW;
