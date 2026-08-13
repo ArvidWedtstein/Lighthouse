@@ -2,16 +2,14 @@
 #include <avr/sleep.h> 
 #include <avr/wdt.h> 
 
-bool serialActive = false;
-
 // ---- Pin definitions ----
 const int RELAY_PIN = 6;
 const int LIGHT_SENSOR_PIN = A0; 
 const int LED_PIN = LED_BUILTIN; 
 
 // ---- Settings ----
-const int DARK_THRESHOLD = 5;  
-const int LIGHT_THRESHOLD = 25;
+const int DARK_THRESHOLD = 200;  
+const int LIGHT_THRESHOLD = 500;
 const unsigned long LoopDelay = 1000UL; // 1s
 
 const unsigned long ON_DURATION_CYCLES   = (2UL * 60UL * 60UL) / 8UL;   
@@ -54,35 +52,32 @@ void setupWatchdog() {
 
 
 void enterDeepSleep() {
-  ADCSRA &= ~(1 << ADEN); // Turn off the Analog to Digital Converter (Saves battery)
-  set_sleep_mode(SLEEP_MODE_PWR_DOWN); // Choose maximum deep sleep profile
+  ADCSRA &= ~(1 << ADEN);
+  set_sleep_mode(SLEEP_MODE_PWR_DOWN); 
   sleep_enable();
   
-  sleep_cpu(); // Microcontroller turns completely off here...
+  sleep_cpu();
   
-  // ...The code resumes right here exactly 8 seconds later when the watchdog barks
   sleep_disable(); 
-  ADCSRA |= (1 << ADEN); // Turn the Analog to Digital Converter back on for sensor tracking
+  ADCSRA |= (1 << ADEN);
 }
 
 void setup() {
+  MCUSR = 0;
+  wdt_disable(); 
+
+  //Serial.begin(9600);
   pinMode(RELAY_PIN, OUTPUT);
   pinMode(LED_PIN, OUTPUT);
   digitalWrite(RELAY_PIN, RELAY_OFF);
 
 
+  //Serial.println("Initializing...");
   setupWatchdog();
 }
 
 void loop() {
   int lightLevel = analogRead(LIGHT_SENSOR_PIN);
-
-  if (lightLevel <= DARK_THRESHOLD) {
-    isDark = true;
-  } 
-  else if (lightLevel >= LIGHT_THRESHOLD) {
-    isDark = false;
-  }
 
   if (lightLevel <= DARK_THRESHOLD) {
     darkStreak++;
@@ -102,16 +97,16 @@ void loop() {
     isDark = false;
   }
 
-  Serial.print("Light: ");
+  /*Serial.println("Light: ");
   Serial.print(lightLevel);
-  Serial.print(" | Filtered Status: ");
+  Serial.println("Filtered Status: ");
   Serial.print(isDark ? "DARK" : "LIGHT");
-  Serial.print(" | State: ");
+  Serial.println("State: ");
   switch (currentState) {
-    case IDLE:     Serial.println("IDLE"); break;
-    case RUNNING:  Serial.println("RUNNING"); break;
-    case COOLDOWN: Serial.println("COOLDOWN"); break;
-  }
+    case IDLE:     Serial.print("IDLE"); break;
+    case RUNNING:  Serial.print("RUNNING"); break;
+    case COOLDOWN: Serial.print("COOLDOWN"); break;
+  }*/
 
   switch (currentState) {
     case IDLE:
@@ -119,7 +114,7 @@ void loop() {
         currentState = RUNNING;
         cycleCounter = 0;
         digitalWrite(RELAY_PIN, RELAY_ON);
-        Serial.println("Dark detected -> Relay ON");
+        Serial.println("Dark detected - Relay ON");
       }
       break;
 
@@ -129,7 +124,7 @@ void loop() {
         digitalWrite(RELAY_PIN, RELAY_OFF);
         currentState = COOLDOWN;
         cycleCounter = 0;
-        Serial.println("time elapsed -> Relay OFF, waiting for light");
+        Serial.println("time elapsed - Relay OFF, waiting for light");
       }
       break;
 
