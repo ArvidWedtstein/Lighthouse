@@ -8,7 +8,7 @@ const int LIGHT_SENSOR_PIN = A0;
 const int LED_PIN = LED_BUILTIN; 
 
 // ---- Settings ----
-const int DARK_THRESHOLD = 200;  
+const int DARK_THRESHOLD = 150;  
 const int LIGHT_THRESHOLD = 500;
 
 const unsigned long ON_DURATION_CYCLES   = (2UL * 60UL * 60UL) / 8UL;   
@@ -46,7 +46,7 @@ void setupWatchdog() {
   MCUSR &= ~(1 << WDRF); // Clear reset flag
   WDTCSR |= (1 << WDCE) | (1 << WDE); // Enable watchdog configuration mode
   WDTCSR = (1 << WDP3) | (1 << WDP0); // Set timeout window to 8.0 seconds
-  WDTCSR |= (1 << WDIE); // Enable watchdog interrupt mode
+  WDTCSR |= (1 << WDIE) | (1 << WDE); // Enable watchdog interrupt mode AND reset both armed
 }
 
 
@@ -59,6 +59,14 @@ void enterDeepSleep() {
   
   sleep_disable(); 
   ADCSRA |= (1 << ADEN);
+
+   // "Pet" the watchdog: re-arm interrupt mode so the next timeout wakes us
+  // normally instead of resetting. If loop() ever hangs and never reaches
+  // this point again, the watchdog will reset the chip instead.
+  wdt_reset();
+  WDTCSR |= (1 << WDCE) | (1 << WDE);
+  WDTCSR = (1 << WDP3) | (1 << WDP0);
+  WDTCSR |= (1 << WDIE) | (1 << WDE);
 }
 
 void setup() {
