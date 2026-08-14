@@ -85,7 +85,6 @@ void loop() {
     lightStreak++;
     darkStreak = 0;
   } else {
-    // In the dead zone between thresholds -> doesn't count toward either streak
     darkStreak = 0;
     lightStreak = 0;
   }
@@ -113,7 +112,7 @@ void loop() {
         currentState = RUNNING;
         cycleCounter = 0;
         digitalWrite(RELAY_PIN, RELAY_ON);
-        Serial.println("Dark detected - Relay ON");
+        //Serial.println("Dark detected - Relay ON");
       }
       break;
 
@@ -123,7 +122,7 @@ void loop() {
         digitalWrite(RELAY_PIN, RELAY_OFF);
         currentState = COOLDOWN;
         cycleCounter = 0;
-        Serial.println("time elapsed - Relay OFF, waiting for light");
+        //Serial.println("time elapsed - Relay OFF, waiting for light");
       }
       break;
 
@@ -132,7 +131,7 @@ void loop() {
       if (!isDark || cycleCounter >= MAX_COOLDOWN_CYCLES) {
         currentState = IDLE;
         cycleCounter = 0;
-        Serial.println("Re-armed");
+        //Serial.println("Re-armed");
       }
       break;
   }
