@@ -73,6 +73,9 @@ Lighthouse is built with the following innovative technologies:
 - PLA Plastic
 - Arduino Uno
 - Car Battery for power
+- Geared DC Motor
+- DRV8871 Motor driver
+- DS3231 RTC for time control
 
 <!-- GETTING STARTED -->
 
