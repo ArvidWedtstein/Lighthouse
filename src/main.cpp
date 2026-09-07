@@ -1,11 +1,21 @@
 #include <Arduino.h>
 #include <avr/sleep.h> 
 #include <avr/wdt.h> 
+#include <Wire.h>
+#include <RTClib.h>
+#include <TM1637Display.h>
+
+RTC_DS3231 rtc;
 
 // ---- Pin definitions ----
 const int RELAY_PIN = 6;
 const int LIGHT_SENSOR_PIN = A0; 
 const int LED_PIN = LED_BUILTIN; 
+
+const int TM_CLK = 4;
+const int TM_DIO = 5;
+
+TM1637Display display(TM_CLK, TM_DIO);
 
 // ---- Settings ----
 const int DARK_THRESHOLD = 150;  
@@ -70,21 +80,30 @@ void enterDeepSleep() {
 }
 
 void setup() {
-  MCUSR = 0;
-  wdt_disable(); 
+  /*MCUSR = 0;
+  wdt_disable(); */
 
-  //Serial.begin(9600);
+  Serial.begin(9600);
   pinMode(RELAY_PIN, OUTPUT);
   pinMode(LED_PIN, OUTPUT);
   digitalWrite(RELAY_PIN, RELAY_OFF);
 
+  display.setBrightness(0x0f);
+  display.clear();
+
+  Wire.begin();
+  rtc.begin();
+
+  if (rtc.lostPower()) {
+    rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+  }
 
   //Serial.println("Initializing...");
-  setupWatchdog();
+  //setupWatchdog();
 }
 
 void loop() {
-  int lightLevel = analogRead(LIGHT_SENSOR_PIN);
+  /*int lightLevel = analogRead(LIGHT_SENSOR_PIN);
 
   if (lightLevel <= DARK_THRESHOLD) {
     darkStreak++;
@@ -102,17 +121,6 @@ void loop() {
   } else if (lightStreak >= DEBOUNCE_CYCLES) {
     isDark = false;
   }
-
-  /*Serial.println("Light: ");
-  Serial.print(lightLevel);
-  Serial.println("Filtered Status: ");
-  Serial.print(isDark ? "DARK" : "LIGHT");
-  Serial.println("State: ");
-  switch (currentState) {
-    case IDLE:     Serial.print("IDLE"); break;
-    case RUNNING:  Serial.print("RUNNING"); break;
-    case COOLDOWN: Serial.print("COOLDOWN"); break;
-  }*/
 
   switch (currentState) {
     case IDLE:
@@ -151,5 +159,5 @@ void loop() {
   }
   digitalWrite(LED_PIN, ledState);
 
-  enterDeepSleep();
+  enterDeepSleep();*/
 }

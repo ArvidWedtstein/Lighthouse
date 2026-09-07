@@ -100,6 +100,34 @@ The Lighthousse itselves selves as distraction for bypassing ships.
 
 Testing is done manually.
 
+### Cables
+
+#### Light sensor
+
+- Red -> 5V
+- Black -> GND
+- Yellow -> Out (A0)
+
+#### TM1637 Display
+
+- Gray -> CLK (D4)
+- Cyan -> DIO (D5)
+- Blue -> GND
+- Purple -> VCC (5V)
+
+#### DS3231 RTC
+
+- Red -> VCC (5V)
+- Black -> GND
+- Brown -> SDA (A4)
+- White -> SCL (A5)
+
+#### Relay
+
+- Brown -> GND
+- Orange -> VCC (5V)
+- Orange -> IN (D6)
+
 <!-- CONTRIBUTING -->
 
 ## Contributing
