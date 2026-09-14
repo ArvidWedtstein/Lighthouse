@@ -131,6 +131,13 @@ Testing is done manually.
 - Orange -> VCC (5V)
 - Orange -> IN (D6)
 
+### DRV8871 Motor driver
+
+- Unknown -> GND (GND)
+- Unknown -> VM (12V)
+- Unknown -> IN1 (D9)
+- Unknown -> IN2 (GND)
+
 <!-- CONTRIBUTING -->
 
 ## Contributing
