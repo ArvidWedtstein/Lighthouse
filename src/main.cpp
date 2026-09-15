@@ -12,6 +12,9 @@ const int RELAY_PIN = 6;
 const int LIGHT_SENSOR_PIN = A0; 
 const int LED_PIN = LED_BUILTIN; 
 
+const int POT_PIN = A1;
+const int BUTTON_PIN = 2;
+
 const int TM_CLK = 4;
 const int TM_DIO = 5;
 
@@ -20,33 +23,40 @@ TM1637Display display(TM_CLK, TM_DIO);
 // ---- Settings ----
 const int DARK_THRESHOLD = 150;  
 const int LIGHT_THRESHOLD = 500;
-
-const unsigned long ON_DURATION_CYCLES   = (2UL * 60UL * 60UL) / 8UL;   
-const unsigned long MAX_COOLDOWN_CYCLES = (12UL * 60UL * 60UL) / 8UL; 
-
-// ---- Debounce settings ----
-// Each cycle is ~8s (one watchdog wake). Requiring 4 consecutive consistent
-// readings means a transition needs to hold for ~32s before it's trusted.
 const int DEBOUNCE_CYCLES = 4;
+
+unsigned int durationMinutes = 120;  // default 2 hours
+int offHour = 23;                    // default 11 PM
+int offMinute = 0;
+
+// ---- Adjustment ranges ----
+const unsigned int DURATION_MIN = 30;    // 30 min
+const unsigned int DURATION_MAX = 360;   // 6 hours
+const unsigned int DURATION_STEP = 15;   // round to nearest 15 min
+
+const unsigned long MAX_COOLDOWN_CYCLES = (12UL * 60UL * 60UL) / 8UL; 
 
 // ---- Relay logic level ----
 const int RELAY_ON = LOW;
 const int RELAY_OFF = HIGH;
 
 // ---- State machine ----
-enum State {
-  IDLE,     
-  RUNNING,  
-  COOLDOWN        // Relay off, waiting for light before re-arming
-};
-
+enum State { IDLE, RUNNING, COOLDOWN };
 State currentState = IDLE;
 unsigned long cycleCounter = 0; 
+unsigned long activeOnDurationCycles = 0; // captured at RUNNING start
 bool isDark = false;
-int ledState = LOW;
 
 int darkStreak = 0;
 int lightStreak = 0;
+
+enum UIMode { UI_OFF, UI_EDIT_DURATION, UI_EDIT_OFFTIME };
+UIMode uiMode = UI_OFF;
+unsigned long lastInteractionMs = 0;
+const unsigned long UI_TIMEOUT_MS = 15000; // 15s idle -> exit settings mode
+bool lastButtonState = HIGH;
+unsigned long lastButtonChangeMs = 0;
+const unsigned long DEBOUNCE_MS = 250;
 
 ISR(WDT_vect) {
   // Used as physical wakeup alarm clock
@@ -64,24 +74,82 @@ void enterDeepSleep() {
   ADCSRA &= ~(1 << ADEN);
   set_sleep_mode(SLEEP_MODE_PWR_DOWN); 
   sleep_enable();
-  
   sleep_cpu();
-  
   sleep_disable(); 
   ADCSRA |= (1 << ADEN);
+}
 
-   // "Pet" the watchdog: re-arm interrupt mode so the next timeout wakes us
-  // normally instead of resetting. If loop() ever hangs and never reaches
-  // this point again, the watchdog will reset the chip instead.
-  wdt_reset();
-  WDTCSR |= (1 << WDCE) | (1 << WDE);
-  WDTCSR = (1 << WDP3) | (1 << WDP0);
-  WDTCSR |= (1 << WDIE) | (1 << WDE);
+bool pastOffTime() {
+  DateTime now = rtc.now();
+  int nowMinutes = now.hour() * 60 + now.minute();
+  int targetMinutes = offHour * 60 + offMinute;
+  return nowMinutes >= targetMinutes;
+}
+
+bool buttonPressed() {
+  bool reading = digitalRead(BUTTON_PIN); // LOW = pressed (pullup)
+  bool pressedEdge = false;
+  if (reading != lastButtonState && (millis() - lastButtonChangeMs) > DEBOUNCE_MS) {
+    lastButtonChangeMs = millis();
+    if (reading == LOW) {
+      pressedEdge = true;
+    }
+  }
+  lastButtonState = reading;
+  return pressedEdge;
+}
+
+
+void updateDisplayForMode() {
+  if (uiMode == UI_EDIT_DURATION) {
+    int h = durationMinutes / 60;
+    int m = durationMinutes % 60;
+    display.showNumberDecEx(h * 100 + m, 0b11100000, true); // colon on
+  } else if (uiMode == UI_EDIT_OFFTIME) {
+    display.showNumberDecEx(offHour * 100 + offMinute, 0b11100000, true);
+  } else {
+    display.clear();
+  }
+}
+
+void runSettingsMode() {
+  while (uiMode != UI_OFF) {
+    int potVal = analogRead(POT_PIN);
+
+    if (uiMode == UI_EDIT_DURATION) {
+      unsigned int mapped = map(potVal, 0, 1023, DURATION_MIN, DURATION_MAX);
+      mapped = (mapped / DURATION_STEP) * DURATION_STEP; // round to nearest step
+      durationMinutes = mapped;
+    } else if (uiMode == UI_EDIT_OFFTIME) {
+      int totalMinutes = map(potVal, 0, 1023, 0, 1439);
+      totalMinutes = (totalMinutes / 15) * 15; // round to nearest 15 min
+      offHour = totalMinutes / 60;
+      offMinute = totalMinutes % 60;
+    }
+
+    updateDisplayForMode();
+
+    if (buttonPressed()) {
+      lastInteractionMs = millis();
+      if (uiMode == UI_EDIT_DURATION) {
+        uiMode = UI_EDIT_OFFTIME;
+      } else if (uiMode == UI_EDIT_OFFTIME) {
+        uiMode = UI_OFF;
+      }
+    }
+
+    if (millis() - lastInteractionMs > UI_TIMEOUT_MS) {
+      uiMode = UI_OFF; // idle timeout
+    }
+
+    delay(100); // responsive but not busy-spinning too hard
+  }
+  display.clear();
 }
 
 void setup() {
-  /*MCUSR = 0;
-  wdt_disable(); */
+  MCUSR = 0;
+  wdt_disable();
 
   Serial.begin(9600);
   pinMode(RELAY_PIN, OUTPUT);
@@ -99,11 +167,18 @@ void setup() {
   }
 
   //Serial.println("Initializing...");
-  //setupWatchdog();
+  setupWatchdog();
 }
 
 void loop() {
-  /*int lightLevel = analogRead(LIGHT_SENSOR_PIN);
+  if (buttonPressed()) {
+    uiMode = UI_EDIT_DURATION;
+    lastInteractionMs = millis();
+    runSettingsMode(); // blocks here (fast loop) until user is done
+  }
+
+  
+  int lightLevel = analogRead(LIGHT_SENSOR_PIN);
 
   if (lightLevel <= DARK_THRESHOLD) {
     darkStreak++;
@@ -127,18 +202,17 @@ void loop() {
       if (isDark) {
         currentState = RUNNING;
         cycleCounter = 0;
+        activeOnDurationCycles = (durationMinutes * 60UL) / 8UL; // capture current setting
         digitalWrite(RELAY_PIN, RELAY_ON);
-        //Serial.println("Dark detected - Relay ON");
       }
       break;
 
     case RUNNING:
       cycleCounter++;
-      if (cycleCounter >= ON_DURATION_CYCLES) {
+      if (cycleCounter >= activeOnDurationCycles || pastOffTime()) {
         digitalWrite(RELAY_PIN, RELAY_OFF);
         currentState = COOLDOWN;
         cycleCounter = 0;
-        //Serial.println("time elapsed - Relay OFF, waiting for light");
       }
       break;
 
@@ -147,17 +221,11 @@ void loop() {
       if (!isDark || cycleCounter >= MAX_COOLDOWN_CYCLES) {
         currentState = IDLE;
         cycleCounter = 0;
-        //Serial.println("Re-armed");
       }
       break;
   }
 
-  if (isDark && currentState == IDLE) {
-    ledState = HIGH;
-  } else {
-    ledState = LOW;
-  }
-  digitalWrite(LED_PIN, ledState);
-
-  enterDeepSleep();*/
+  digitalWrite(LED_PIN, (isDark && currentState == IDLE) ? HIGH : LOW);
+  
+  enterDeepSleep();
 }

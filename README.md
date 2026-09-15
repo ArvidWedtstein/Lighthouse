@@ -118,6 +118,17 @@ Testing is done manually.
 - Blue -> GND
 - Purple -> VCC (5V)
 
+### Mode Button
+
+- Green -> D2
+- Green -> GND
+
+### 10k Potentiometer
+
+- Unknown -> Middle pin (A1)
+- Unknown -> Left pin (5V)
+- Unknown -> Right pin (GND)
+
 #### DS3231 RTC
 
 - Red -> VCC (5V)
