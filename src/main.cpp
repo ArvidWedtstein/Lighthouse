@@ -1,3 +1,4 @@
+
 #include <Arduino.h>
 #include <avr/sleep.h> 
 #include <avr/wdt.h> 
@@ -55,6 +56,8 @@ UIMode uiMode = UI_OFF;
 unsigned long lastInteractionMs = 0;
 const unsigned long UI_TIMEOUT_MS = 15000; // 15s idle -> exit settings mode
 bool lastButtonState = HIGH;
+volatile bool buttonWoke = false;
+
 unsigned long lastButtonChangeMs = 0;
 const unsigned long DEBOUNCE_MS = 250;
 
@@ -84,6 +87,10 @@ bool pastOffTime() {
   int nowMinutes = now.hour() * 60 + now.minute();
   int targetMinutes = offHour * 60 + offMinute;
   return nowMinutes >= targetMinutes;
+}
+
+void buttonISR() {
+  buttonWoke = true; // just flag it - keep ISRs minimal
 }
 
 bool buttonPressed() {
@@ -154,7 +161,10 @@ void setup() {
   Serial.begin(9600);
   pinMode(RELAY_PIN, OUTPUT);
   pinMode(LED_PIN, OUTPUT);
+  pinMode(BUTTON_PIN, INPUT_PULLUP);
   digitalWrite(RELAY_PIN, RELAY_OFF);
+
+  attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), buttonISR, FALLING);
 
   display.setBrightness(0x0f);
   display.clear();
@@ -171,10 +181,16 @@ void setup() {
 }
 
 void loop() {
-  if (buttonPressed()) {
-    uiMode = UI_EDIT_DURATION;
-    lastInteractionMs = millis();
-    runSettingsMode(); // blocks here (fast loop) until user is done
+  if (buttonWoke) {
+    buttonWoke = false;
+    delay(50);
+
+    if (digitalRead(BUTTON_PIN) == LOW) { // confirm it's still actually pressed
+      Serial.println("Pressed");
+      uiMode = UI_EDIT_DURATION;
+      lastInteractionMs = millis();
+      runSettingsMode(); // blocks here (fast loop) until user is done
+    }
   }
 
   
