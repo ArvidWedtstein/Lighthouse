@@ -118,12 +118,12 @@ Testing is done manually.
 - Brown -> GND
 - White -> VCC (5V)
 
-### Mode Button
+#### Mode Button
 
 - Green -> D2
 - Green -> GND
 
-### 10k Potentiometer
+#### 10k Potentiometer
 
 - Unknown -> Middle pin (A1)
 - Unknown -> Left pin (5V)
@@ -142,12 +142,21 @@ Testing is done manually.
 - Orange -> VCC (5V)
 - Green -> IN (D6)
 
-### DRV8871 Motor driver
+#### DRV8871 Motor driver
 
 - Unknown -> GND (GND)
 - Unknown -> VM (12V)
 - Unknown -> IN1 (D9)
 - Unknown -> IN2 (GND)
+
+### Lighthouse Settings
+
+The lighthouse features a 4 digit 7-segment display and a single button for user interaction. The display shows the current duration setting in minutes, which can be adjusted using a potentiometer. The button is used to enter settings mode and to confirm changes.
+
+- Btn press: Enter settings mode (duration is shown on display)
+- 2. Btn press: Screen swaps to show off time.
+
+The lighthouse operates based on which of these happens first.
 
 <!-- CONTRIBUTING -->
 

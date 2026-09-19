@@ -1,4 +1,3 @@
-
 #include <Arduino.h>
 #include <avr/sleep.h> 
 #include <avr/wdt.h> 
@@ -45,7 +44,7 @@ const int RELAY_OFF = HIGH;
 enum State { IDLE, RUNNING, COOLDOWN };
 State currentState = IDLE;
 unsigned long cycleCounter = 0; 
-unsigned long activeOnDurationCycles = 0; // captured at RUNNING start
+unsigned long activeOnDurationCycles = 0; 
 bool isDark = false;
 
 int darkStreak = 0;
@@ -57,6 +56,9 @@ unsigned long lastInteractionMs = 0;
 const unsigned long UI_TIMEOUT_MS = 15000; // 15s idle -> exit settings mode
 bool lastButtonState = HIGH;
 volatile bool buttonWoke = false;
+
+bool potTookOver = false;
+int lastMode = -1; 
 
 unsigned long lastButtonChangeMs = 0;
 const unsigned long DEBOUNCE_MS = 250;
@@ -80,6 +82,14 @@ void enterDeepSleep() {
   sleep_cpu();
   sleep_disable(); 
   ADCSRA |= (1 << ADEN);
+
+  // Re-arm interrupt-only mode so the NEXT timeout wakes normally
+  // instead of resetting. If loop() ever hangs and never reaches this
+  // point again, the watchdog reset becomes your safety net.
+  wdt_reset();
+  WDTCSR |= (1 << WDCE) | (1 << WDE);
+  WDTCSR = (1 << WDP3) | (1 << WDP0);
+  WDTCSR |= (1 << WDIE) | (1 << WDE);
 }
 
 bool pastOffTime() {
@@ -120,18 +130,47 @@ void updateDisplayForMode() {
 }
 
 void runSettingsMode() {
+  potTookOver = false;
+  lastMode = uiMode;
+
   while (uiMode != UI_OFF) {
+    if (uiMode != lastMode) {
+      potTookOver = false;
+      lastMode = uiMode;
+    }
+
     int potVal = analogRead(POT_PIN);
 
     if (uiMode == UI_EDIT_DURATION) {
       unsigned int mapped = map(potVal, 0, 1023, DURATION_MIN, DURATION_MAX);
-      mapped = (mapped / DURATION_STEP) * DURATION_STEP; // round to nearest step
-      durationMinutes = mapped;
+      mapped = (mapped / DURATION_STEP) * DURATION_STEP;
+      
+      if (!potTookOver) {
+        // Only take over once the knob has been moved close to the
+        // current stored value - avoids a jump when switching screens.
+        int diff = abs((int)mapped - (int)durationMinutes);
+        if (diff <= (int)DURATION_STEP) {
+          potTookOver = true;
+        }
+      }
+      if (potTookOver) {
+        durationMinutes = mapped;
+      }
     } else if (uiMode == UI_EDIT_OFFTIME) {
       int totalMinutes = map(potVal, 0, 1023, 0, 1439);
-      totalMinutes = (totalMinutes / 15) * 15; // round to nearest 15 min
-      offHour = totalMinutes / 60;
-      offMinute = totalMinutes % 60;
+      totalMinutes = (totalMinutes / 15) * 15;
+      int currentTotal = offHour * 60 + offMinute;
+
+      if (!potTookOver) {
+        int diff = abs(totalMinutes - currentTotal);
+        if (diff <= 15) {
+          potTookOver = true;
+        }
+      }
+      if (potTookOver) {
+        offHour = totalMinutes / 60;
+        offMinute = totalMinutes % 60;
+      }
     }
 
     updateDisplayForMode();
@@ -149,16 +188,17 @@ void runSettingsMode() {
       uiMode = UI_OFF; // idle timeout
     }
 
-    delay(100); // responsive but not busy-spinning too hard
+    delay(100); 
   }
   display.clear();
+  buttonWoke = false;
 }
 
 void setup() {
   MCUSR = 0;
   wdt_disable();
 
-  Serial.begin(9600);
+  //Serial.begin(9600);
   pinMode(RELAY_PIN, OUTPUT);
   pinMode(LED_PIN, OUTPUT);
   pinMode(BUTTON_PIN, INPUT_PULLUP);
@@ -182,14 +222,13 @@ void setup() {
 
 void loop() {
   if (buttonWoke) {
-    buttonWoke = false;
     delay(50);
 
-    if (digitalRead(BUTTON_PIN) == LOW) { // confirm it's still actually pressed
-      Serial.println("Pressed");
+    if (digitalRead(BUTTON_PIN) == LOW) {
       uiMode = UI_EDIT_DURATION;
       lastInteractionMs = millis();
-      runSettingsMode(); // blocks here (fast loop) until user is done
+      runSettingsMode();
+      buttonWoke = false; // discard any press that occurred while exiting settings mode
     }
   }
 
@@ -218,7 +257,7 @@ void loop() {
       if (isDark) {
         currentState = RUNNING;
         cycleCounter = 0;
-        activeOnDurationCycles = (durationMinutes * 60UL) / 8UL; // capture current setting
+        activeOnDurationCycles = (durationMinutes * 60UL) / 8UL;
         digitalWrite(RELAY_PIN, RELAY_ON);
       }
       break;
