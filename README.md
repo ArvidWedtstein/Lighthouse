@@ -89,9 +89,13 @@ To run this project you'll need to Ardunio IDE or VSCode with Platformio install
 
 Instructions TBA...
 
-### Deploying
+### Deploying / Uploading to lighthouse
 
-Please don't
+Using Platformio, build project first and then upload to the Ardunio Uno. Make sure to select the correct board and port in Platformio.
+
+You might need to install the CH341 driver for your computer to recognize the board. You can download the driver from [here](http://www.wch.cn/download/CH341SER_EXE.html).
+
+If you have a cheap chinese clone of the Ardunio Uno, you will have to press reset button on the board then platformio is on "uploading" step.
 
 <!-- USAGE EXAMPLES -->
 
