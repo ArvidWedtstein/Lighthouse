@@ -25,7 +25,7 @@ const int DARK_THRESHOLD = 150;
 const int LIGHT_THRESHOLD = 500;
 const int DEBOUNCE_CYCLES = 4;
 
-unsigned int durationMinutes = 120;  // default 2 hours
+unsigned int durationMinutes = 160;  // default 2 hours
 int offHour = 23;                    // default 11 PM
 int offMinute = 0;
 
@@ -132,6 +132,7 @@ void updateDisplayForMode() {
 void runSettingsMode() {
   potTookOver = false;
   lastMode = uiMode;
+  int lastPotVal = analogRead(POT_PIN);
 
   while (uiMode != UI_OFF) {
     if (uiMode != lastMode) {
@@ -141,6 +142,11 @@ void runSettingsMode() {
 
     int potVal = analogRead(POT_PIN);
 
+    if (abs(potVal - lastPotVal) > 3) { // small deadband to ignore ADC jitter
+      lastInteractionMs = millis();
+      lastPotVal = potVal;
+    }
+    
     if (uiMode == UI_EDIT_DURATION) {
       unsigned int mapped = map(potVal, 0, 1023, DURATION_MIN, DURATION_MAX);
       mapped = (mapped / DURATION_STEP) * DURATION_STEP;
@@ -204,7 +210,7 @@ void setup() {
   pinMode(BUTTON_PIN, INPUT_PULLUP);
   digitalWrite(RELAY_PIN, RELAY_OFF);
 
-  attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), buttonISR, FALLING);
+  attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), buttonISR, LOW);
 
   display.setBrightness(0x0f);
   display.clear();
@@ -222,13 +228,13 @@ void setup() {
 
 void loop() {
   if (buttonWoke) {
+    buttonWoke = false; 
     delay(50);
 
     if (digitalRead(BUTTON_PIN) == LOW) {
       uiMode = UI_EDIT_DURATION;
       lastInteractionMs = millis();
       runSettingsMode();
-      buttonWoke = false; // discard any press that occurred while exiting settings mode
     }
   }
 
