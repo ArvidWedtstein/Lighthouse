@@ -5,8 +5,8 @@
 
 static TM1637Display display(TM_CLK, TM_DIO);
 
-unsigned int durationMinutes = 160;
-int offHour = 23;
+unsigned int durationMinutes = 240;
+int offHour = 22;
 int offMinute = 0;
 
 enum UIMode { UI_OFF, UI_EDIT_DURATION, UI_EDIT_OFFTIME };
