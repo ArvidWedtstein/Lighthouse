@@ -115,12 +115,15 @@ Testing is done manually.
 - Brown -> GND
 - Yellow -> Out (A0)
 
-#### TM1637 Display
+#### Cheap 128x64 oled Display
 
-- Gray -> CLK (D4)
-- Purple -> DIO (D5)
-- Brown -> GND
-- White -> VCC (5V)
+- Gray -> GND (GND)
+- Purple -> V (5V)
+- Brown -> D0 (D4)
+- White -> D1 (D5)
+- White -> RST (D7)
+- White -> DC (D8)
+- White -> CS (D9)
 
 #### Mode Button
 
