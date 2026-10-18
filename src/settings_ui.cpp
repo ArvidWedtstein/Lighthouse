@@ -9,7 +9,7 @@ static Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT,
 
 static bool oledOk = false;
 
-unsigned int durationMinutes = 240;
+unsigned int durationMinutes = 300;
 int offHour = 22;
 int offMinute = 0;
 
