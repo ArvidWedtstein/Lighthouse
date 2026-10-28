@@ -9,11 +9,13 @@ static Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT,
 
 static bool oledOk = false;
 
+int startHour = 0;
+int startMinute = 0;
 unsigned int durationMinutes = 240;
 int offHour = 22;
 int offMinute = 0;
 
-enum UIMode { UI_OFF, UI_EDIT_DURATION, UI_EDIT_OFFTIME };
+enum UIMode { UI_OFF, UI_EDIT_START, UI_EDIT_DURATION, UI_EDIT_OFFTIME };
 static UIMode uiMode = UI_OFF;
 
 static unsigned long lastInteractionMs = 0;
@@ -26,6 +28,7 @@ static bool potTookOver = false;
 static int lastUiMode = -1;
 
 static int lastShownMode = -1;
+static int lastShownStartTotal = -1;
 static unsigned int lastShownDuration = 0;
 static int lastShownOffTotal = -1;
 
@@ -68,62 +71,86 @@ static void printTime(int h, int m) {
   display.print(m);
 }
 
+static void drawRow(int y, const __FlashStringHelper* label, int h, int m, bool selected) {
+  if (selected) {
+    display.setTextSize(2);
+    display.setCursor(0, y);
+    display.print('>');
+  }
+  display.setTextSize(1);
+  display.setCursor(14, y + 4);
+  display.print(label);
+ 
+  display.setTextSize(2);
+  display.setCursor(64, y);
+  printTime(h, m);
+}
+
+
 static void drawSettingsScreen() {
   display.clearDisplay();
   display.setTextColor(SSD1306_WHITE);
  
-  // ---- Row 1: max on time ----
-  display.setTextSize(1);
-  display.setCursor(18, 0);
-  display.print(F("Max on time"));
-  display.setTextSize(2);
-  display.setCursor(18, 10);
-  printTime(durationMinutes / 60, durationMinutes % 60);
- 
-  // ---- Row 2: off time ----
-  display.setTextSize(1);
-  display.setCursor(18, 36);
-  display.print(F("Turn off at"));
-  display.setTextSize(2);
-  display.setCursor(18, 46);
-  printTime(offHour, offMinute);
- 
-  // ---- Marker showing which setting the knob is editing ----
-  display.setTextSize(2);
-  if (uiMode == UI_EDIT_DURATION) {
-    display.setCursor(0, 10);
-    display.print('>');
-  } else if (uiMode == UI_EDIT_OFFTIME) {
-    display.setCursor(0, 46);
-    display.print('>');
-  }
- 
+  drawRow(0,  F("Start"),  startHour, startMinute, uiMode == UI_EDIT_START);
+  drawRow(22, F("Max on"), durationMinutes / 60, durationMinutes % 60, uiMode == UI_EDIT_DURATION);
+  drawRow(44, F("Off at"), offHour, offMinute, uiMode == UI_EDIT_OFFTIME);
+
+
   display.display();
 }
 
 static void refreshDisplayIfNeeded() {
   if (!oledOk) return;
  
+  int startTotal = startHour * 60 + startMinute;
   int offTotal = offHour * 60 + offMinute;
   if (uiMode == lastShownMode &&
+      startTotal == lastShownStartTotal &&
       durationMinutes == lastShownDuration &&
       offTotal == lastShownOffTotal) {
     return;
   }
- 
+
   drawSettingsScreen();
   lastShownMode = uiMode;
+  lastShownStartTotal = startTotal;
   lastShownDuration = durationMinutes;
   lastShownOffTotal = offTotal;
 }
 
+
+static void trackTimeOfDay(int potVal, int &hour, int &minute) {
+  int total = map(potVal, 0, 1023, 0, 1439);
+  total = (total / 15) * 15;
+  int current = hour * 60 + minute;
+ 
+  if (!potTookOver && abs(total - current) <= 15) {
+    potTookOver = true;
+  }
+  if (potTookOver) {
+    hour = total / 60;
+    minute = total % 60;
+  }
+}
+
+static void trackDuration(int potVal) {
+  unsigned int mapped = map(potVal, 0, 1023, DURATION_MIN, DURATION_MAX);
+  mapped = (mapped / DURATION_STEP) * DURATION_STEP;
+ 
+  if (!potTookOver && abs((int)mapped - (int)durationMinutes) <= (int)DURATION_STEP) {
+    potTookOver = true;
+  }
+  if (potTookOver) {
+    durationMinutes = mapped;
+  }
+}
 
 
 static void runSettingsMode() {
   potTookOver = false;
   lastUiMode = uiMode;
   lastShownMode = -1; // force a first draw
-  int lastPotVal = analogRead(POT_PIN); // baseline for movement detection
+  int lastPotVal = analogRead(POT_PIN);
  
   oledWake();
  
@@ -134,50 +161,28 @@ static void runSettingsMode() {
     }
  
     int potVal = analogRead(POT_PIN);
- 
 
-    if (abs(potVal - lastPotVal) > 3) { 
+    if (abs(potVal - lastPotVal) > 3) {
       lastInteractionMs = millis();
       lastPotVal = potVal;
     }
- 
-    if (uiMode == UI_EDIT_DURATION) {
-      unsigned int mapped = map(potVal, 0, 1023, DURATION_MIN, DURATION_MAX);
-      mapped = (mapped / DURATION_STEP) * DURATION_STEP; 
- 
-      if (!potTookOver) {
-        // Only take over once the knob has been moved close to the
-        // current stored value - avoids a jump when switching settings.
-        int diff = abs((int)mapped - (int)durationMinutes);
-        if (diff <= (int)DURATION_STEP) {
-          potTookOver = true;
-        }
-      }
-      if (potTookOver) {
-        durationMinutes = mapped;
-      }
+
+
+    if (uiMode == UI_EDIT_START) {
+      trackTimeOfDay(potVal, startHour, startMinute);
+    } else if (uiMode == UI_EDIT_DURATION) {
+      trackDuration(potVal);
     } else if (uiMode == UI_EDIT_OFFTIME) {
-      int totalMinutes = map(potVal, 0, 1023, 0, 1439);
-      totalMinutes = (totalMinutes / 15) * 15; 
-      int currentTotal = offHour * 60 + offMinute;
- 
-      if (!potTookOver) {
-        int diff = abs(totalMinutes - currentTotal);
-        if (diff <= 15) {
-          potTookOver = true;
-        }
-      }
-      if (potTookOver) {
-        offHour = totalMinutes / 60;
-        offMinute = totalMinutes % 60;
-      }
+      trackTimeOfDay(potVal, offHour, offMinute);
     }
- 
+
     refreshDisplayIfNeeded();
- 
+
     if (buttonPressed()) {
       lastInteractionMs = millis();
-      if (uiMode == UI_EDIT_DURATION) {
+      if (uiMode == UI_EDIT_START) {
+        uiMode = UI_EDIT_DURATION;
+      } else if (uiMode == UI_EDIT_DURATION) {
         uiMode = UI_EDIT_OFFTIME;
       } else if (uiMode == UI_EDIT_OFFTIME) {
         uiMode = UI_OFF;

@@ -14,7 +14,7 @@ void updateRelayStateMachine() {
   switch (currentState) {
 
     case IDLE:
-      if (isDark) {
+      if (isDark && isWithinAllowedWindow()) {
         currentState = RUNNING;
         cycleCounter = 0;
 
@@ -25,7 +25,7 @@ void updateRelayStateMachine() {
 
     case RUNNING:
       cycleCounter++;
-      if (cycleCounter >= activeOnDurationCycles || pastOffTime()) {
+      if (cycleCounter >= activeOnDurationCycles || !isWithinAllowedWindow()) {
         digitalWrite(RELAY_PIN, RELAY_OFF);
         currentState = COOLDOWN;
         cycleCounter = 0;
