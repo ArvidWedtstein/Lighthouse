@@ -1,9 +1,11 @@
 #pragma once
 
 // ---- Live settings, adjustable via button + potentiometer ----
+extern int startHour;                // earliest time the sensor may switch the relay on
+extern int startMinute;              // default 00:00 = no early restriction
 extern unsigned int durationMinutes; 
-extern int offHour;                  
-extern int offMinute;
+extern int offHour;       
+extern int offMinute;       
 
 
 void setupSettingsUI();

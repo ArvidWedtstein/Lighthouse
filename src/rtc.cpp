@@ -15,9 +15,14 @@ void setupRTC() {
   }
 }
 
-bool pastOffTime() {
+bool isWithinAllowedWindow() {
   DateTime now = rtc.now();
-  int nowMinutes = now.hour() * 60 + now.minute();
-  int targetMinutes = offHour * 60 + offMinute;
-  return nowMinutes >= targetMinutes;
+  int nowMin   = now.hour() * 60 + now.minute();
+  int startMin = startHour * 60 + startMinute;
+  int offMin   = offHour * 60 + offMinute;
+ 
+  if (startMin == offMin) return true;  
+  if (startMin < offMin)  return nowMin >= startMin && nowMin < offMin;
+  return nowMin >= startMin || nowMin < offMin;
 }
+
