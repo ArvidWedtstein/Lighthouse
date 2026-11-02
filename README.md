@@ -117,13 +117,10 @@ Testing is done manually.
 
 #### Cheap 128x64 oled Display
 
-- Gray -> GND (GND)
-- Purple -> V (5V)
-- Brown -> D0 (D4)
-- White -> D1 (D5)
-- White -> RST (D7)
-- White -> DC (D8)
-- White -> CS (D9)
+- Gray -> V1 (GND)
+- Purple -> V2 (5V)
+- Brown -> SDA (A4)
+- White -> SCL (A5)
 
 #### Mode Button
 

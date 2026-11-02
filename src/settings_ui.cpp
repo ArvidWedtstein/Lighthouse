@@ -1,11 +1,12 @@
 #include <Arduino.h>
+#include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include "settings_ui.h"
 #include "config.h"
 
-static Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT,
-                                OLED_MOSI, OLED_CLK, OLED_DC, OLED_RST, OLED_CS);
+
+static Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 static bool oledOk = false;
 
@@ -149,7 +150,7 @@ static void trackDuration(int potVal) {
 static void runSettingsMode() {
   potTookOver = false;
   lastUiMode = uiMode;
-  lastShownMode = -1; // force a first draw
+  lastShownMode = -1;
   int lastPotVal = analogRead(POT_PIN);
  
   oledWake();
@@ -205,7 +206,7 @@ void setupSettingsUI() {
  
   // begin() also starts the I2C bus. Returns false if the framebuffer
   // (1KB of the Uno's 2KB RAM) couldn't be allocated.
-  oledOk = display.begin(SSD1306_SWITCHCAPVCC);
+  oledOk = display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDR);
   oledSleep();
 }
 

@@ -11,15 +11,13 @@ const int POT_PIN    = A1;
 const int BUTTON_PIN = 2; 
 
 // ============================================================
-// OLED display (I2C - shares SDA=A4 / SCL=A5 with the RTC)
+// OLED display (4-pin I2C module - shares SDA=A4 / SCL=A5 with the RTC)
 // ============================================================
 const int SCREEN_WIDTH  = 128;
 const int SCREEN_HEIGHT = 64;
-const int OLED_CLK  = 4;   // module pin "D0"
-const int OLED_MOSI = 5;   // module pin "D1"
-const int OLED_DC   = 7;
-const int OLED_RST  = 8;
-const int OLED_CS   = 9;
+const int OLED_RESET    = -1;    // no reset pin on 4-pin modules
+const uint8_t OLED_ADDR = 0x3C;  // try 0x3D if the screen stays blank
+
 
 
 // ============================================================
