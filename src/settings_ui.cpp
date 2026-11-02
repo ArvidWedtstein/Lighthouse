@@ -12,7 +12,7 @@ static bool oledOk = false;
 
 int startHour = 0;
 int startMinute = 0;
-unsigned int durationMinutes = 240;
+unsigned int durationMinutes = 300;
 int offHour = 22;
 int offMinute = 0;
 
