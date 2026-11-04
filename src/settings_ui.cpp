@@ -2,6 +2,7 @@
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <Fonts/FreeSans9pt7b.h> 
 #include "settings_ui.h"
 #include "config.h"
 
@@ -74,27 +75,25 @@ static void printTime(int h, int m) {
 
 static void drawRow(int y, const __FlashStringHelper* label, int h, int m, bool selected) {
   if (selected) {
-    display.setTextSize(2);
-    display.setCursor(0, y);
-    display.print('>');
+    display.fillRoundRect(0, y + 1, 5, 12, 6, SSD1306_WHITE);
   }
-  display.setTextSize(1);
-  display.setCursor(14, y + 4);
+
+  display.setCursor(8, y);
   display.print(label);
  
-  display.setTextSize(2);
-  display.setCursor(64, y);
+  display.setCursor(80, y);
   printTime(h, m);
 }
 
 
 static void drawSettingsScreen() {
   display.clearDisplay();
+  display.setFont(&FreeSans9pt7b);
   display.setTextColor(SSD1306_WHITE);
  
-  drawRow(0,  F("Start"),  startHour, startMinute, uiMode == UI_EDIT_START);
-  drawRow(22, F("Max on"), durationMinutes / 60, durationMinutes % 60, uiMode == UI_EDIT_DURATION);
-  drawRow(44, F("Off at"), offHour, offMinute, uiMode == UI_EDIT_OFFTIME);
+  drawRow(16,  F("Start"),  startHour, startMinute, uiMode == UI_EDIT_START);
+  drawRow(38, F("Max on"), durationMinutes / 60, durationMinutes % 60, uiMode == UI_EDIT_DURATION);
+  drawRow(60, F("Off at"), offHour, offMinute, uiMode == UI_EDIT_OFFTIME);
 
 
   display.display();
