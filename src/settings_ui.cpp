@@ -35,6 +35,8 @@ static unsigned int lastShownDuration = 0;
 static int lastShownOffTotal = -1;
 
 static void buttonISR() {
+  detachInterrupt(digitalPinToInterrupt(BUTTON_PIN));
+
   buttonWoke = true;
 }
 
@@ -209,17 +211,42 @@ void setupSettingsUI() {
   oledSleep();
 }
 
+// Blocks until the button is released. Times out so a stuck button
+// can't hang the device forever.
+static void waitForRelease() {
+  unsigned long start = millis();
+  while (digitalRead(BUTTON_PIN) == LOW && millis() - start < 3000) {
+    delay(10);
+  }
+  delay(50); 
+}
+
+static void rearmButtonWake() {
+  buttonWoke = false;
+  attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), buttonISR, LOW);
+}
+
+
+
 
 void handleSettingsButton() {
-  if (buttonWoke) {
-    buttonWoke = false;
-    delay(50);
+  if (!buttonWoke) return;
+  buttonWoke = false;
+  delay(50);
 
-    if (digitalRead(BUTTON_PIN) == LOW) {
-      uiMode = UI_EDIT_DURATION;
-      lastInteractionMs = millis();
-      runSettingsMode(); 
-      buttonWoke = false;
-    }
+  if (digitalRead(BUTTON_PIN) == LOW) {
+    waitForRelease();
+
+    lastButtonState = HIGH;
+    lastButtonChangeMs = millis();
+
+
+    uiMode = UI_EDIT_START;
+    lastInteractionMs = millis();
+
+    runSettingsMode(); 
   }
+
+  waitForRelease();
+  rearmButtonWake();
 }
