@@ -50,6 +50,11 @@
     </li>
     <li>
       <a href="#usage">Usage</a>
+      <ul>
+        <li><a href="#cables">Cables</a></li>
+        <li><a href="#lighthouse-settings">Lighthouse Settings</a></li>
+        <li><a href="#lighthouse-status">Lighthouse Status</a></li>
+      </ul>
     </li>
     <li><a href="#contributing">Contributing</a></li>
   </ol>
@@ -157,10 +162,26 @@ Testing is done manually.
 
 The lighthouse features a 4 digit 7-segment display and a single button for user interaction. The display shows the current duration setting in minutes, which can be adjusted using a potentiometer. The button is used to enter settings mode and to confirm changes.
 
-- Btn press: Enter settings mode (duration is shown on display)
-- 2. Btn press: Screen swaps to show off time.
+- 1. Btn press: Enter settings mode earlies start time edit. (Lighthouse cannot turn on before this time)
+- 2. Btn press: screen swaps to edit duration time
+- 3. Btn press: Screen swaps to show off time.
 
 The lighthouse operates based on which of these happens first.
+
+### Lighthouse Status
+
+The built in Arduino UNO has a onboard status light.
+This light will light up depending on several states.
+If several faults are active, only the highest-priority one is shown (2, then 3, then 4).
+Unexpected restarts show up as the 5-flash pattern, so a random reset will be visible if you're watching.
+
+| LED Pattern                   | Description                                                                                                     |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| 5 rapid flashes, then a pause | The board just started or restarted                                                                             |
+| 1 very short blink every ~8s  | Everything is fine (heartbeat)                                                                                  |
+| 2 blinks every cycle          | Clock problem: the RTC isn't responding, or it lost power and its time was reset                                |
+| 3 blinks every cycle          | Sensor problem: it never saw light for the whole 12-hour cooldown, so it may be stuck, covered, or disconnected |
+| 4 blinks every cycle          | The OLED isn't responding on the I2C bus                                                                        |
 
 <!-- CONTRIBUTING -->
 

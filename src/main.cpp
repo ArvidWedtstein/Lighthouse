@@ -6,13 +6,15 @@
 #include "relay_state.h"
 #include "settings_ui.h"
 #include "rtc.h"
+#include "status_led.h"
 
 void setup() {
   MCUSR = 0;
   wdt_disable();
 
+  setupStatusLed();
+
   pinMode(RELAY_PIN, OUTPUT);
-  pinMode(LED_PIN, OUTPUT);
   pinMode(BUTTON_PIN, INPUT_PULLUP);
   digitalWrite(RELAY_PIN, RELAY_OFF);
 
@@ -26,6 +28,9 @@ void loop() {
 
   updateLightSensor();
   updateRelayStateMachine();
+
+  updateRTCFault();
+  showStatusLed(); // heartbeat or fault code, always ends with the LED off
 
   enterDeepSleep();
 }
