@@ -9,7 +9,7 @@
 #include "status_led.h"
 
 
-static Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+static Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET, OLED_I2C_CLOCK, OLED_I2C_CLOCK);
 static bool oledOk = false;
 
 int startHour = DEFAULT_START_HOUR;
@@ -77,6 +77,7 @@ static void oledSleep() {
   if (!oledOk) return;
   display.clearDisplay();
   display.display();
+
   display.ssd1306_command(SSD1306_DISPLAYOFF);
 }
 
@@ -261,6 +262,8 @@ void handleSettingsButton() {
   delay(50); // debounce - Timer0 runs normally now that the ISR has detached
 
   if (digitalRead(BUTTON_PIN) == LOW) {
+    flashPressAck();
+    
     waitForRelease();
 
     lastButtonState = HIGH;

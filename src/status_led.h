@@ -21,3 +21,6 @@ void setFault(FaultCode code, bool active);
 // Faults: blinks the fault's code. No faults: one very short heartbeat
 // blink (if STATUS_HEARTBEAT is enabled in config.h).
 void showStatusLed();
+
+
+void flashPressAck();

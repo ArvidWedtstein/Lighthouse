@@ -41,3 +41,7 @@ void showStatusLed() {
     blinkTimes(1, STATUS_HEARTBEAT_MS, 0);
   }
 }
+
+void flashPressAck() {
+  blinkTimes(2, 50, 50);
+}

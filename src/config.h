@@ -16,7 +16,9 @@ const int BUTTON_PIN = 2;
 const int SCREEN_WIDTH  = 128;
 const int SCREEN_HEIGHT = 64;
 const int OLED_RESET    = -1;    // no reset pin on 4-pin modules
-const uint8_t OLED_ADDR = 0x3D;
+const uint8_t OLED_ADDR = 0x3C;
+
+const uint32_t OLED_I2C_CLOCK = 100000UL;
 
 
 // ============================================================
@@ -46,8 +48,8 @@ const unsigned int DURATION_STEP = 15;
 // ============================================================
 // Earliest time the light sensor is allowed to switch the relay on.
 // 00:00 would mean "no restriction", so pick the earliest time you'd
-// ever want the light on. 16:00 is just a placeholder.
-const int DEFAULT_START_HOUR    = 16;
+// ever want the light on.
+const int DEFAULT_START_HOUR    = 14;
 const int DEFAULT_START_MINUTE  = 0;
 const unsigned int DEFAULT_DURATION_MINUTES = 300; // max on time
 const int DEFAULT_OFF_HOUR      = 22;              // relay always off from here
